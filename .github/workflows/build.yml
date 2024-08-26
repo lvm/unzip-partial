@@ -1,4 +1,4 @@
-name: Build album2go
+name: Build and Publish unzip-partial tools
 
 on:
   push:
@@ -65,12 +65,6 @@ jobs:
       with:
         name: unzip-partial-linux
         path: bin/unzip-partial*-linux
-
-    - name: Upload build artifact for macOS (intel)
-      uses: actions/upload-artifact@v4
-      with:
-        name: unzip-partial-macos-intel
-        path: bin/unzip-partial*-macos-intel
 
     - name: Upload build artifact for macOS (intel)
       uses: actions/upload-artifact@v4
