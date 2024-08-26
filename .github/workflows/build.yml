@@ -1,0 +1,108 @@
+name: Build album2go
+
+on:
+  push:
+    tags:
+      - '*'
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          **/go.sum
+          **/go.mod
+          ${{ github.workspace }}/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go
+
+    - name: Get dependencies
+      run: go mod tidy
+
+    - name: Format code
+      run: gofmt -s -w .
+
+    - name: Run tests
+      run: go test ./...
+
+    - name: Build for Linux
+      run: |
+        GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-linux cmd/unzip-partial/main.go
+        GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-ls-linux cmd/unzip-partial-ls/main.go
+
+    - name: Build for macOS (amd64)
+      run: |
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-macos-intel cmd/unzip-partial/main.go
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-ls-macos-intel cmd/unzip-partial-ls/main.go
+
+    - name: Build for macOS (arm64)
+      run: |
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o bin/unzip-partial-macos-arm cmd/unzip-partial/main.go
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o bin/unzip-partial-ls-macos-arm cmd/unzip-partial-ls/main.go
+
+    - name: Build for Windows
+      run: |
+        GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-windows.exe cmd/unzip-partial/main.go
+        GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o bin/unzip-partial-ls-windows.exe cmd/unzip-partial-ls/main.go
+  
+    - name: Upload build artifact for Linux
+      uses: actions/upload-artifact@v4
+      with:
+        name: unzip-partial-linux
+        path: bin/unzip-partial*-linux
+
+    - name: Upload build artifact for macOS (intel)
+      uses: actions/upload-artifact@v4
+      with:
+        name: unzip-partial-macos-intel
+        path: bin/unzip-partial*-macos-intel
+
+    - name: Upload build artifact for macOS (intel)
+      uses: actions/upload-artifact@v4
+      with:
+        name: unzip-partial-macos-intel
+        path: bin/unzip-partial*-macos-intel
+
+    - name: Upload build artifact for macOS (arm64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: unzip-partial-macos-arm
+        path: bin/unzip-partial*-macos-arm
+
+    - name: Upload build artifact for Windows
+      uses: actions/upload-artifact@v4
+      with:
+        name: unzip-partial-windows
+        path: bin/unzip-partial*-windows.exe
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      id: create_release
+      with:
+        name: "Release: ${{ github.ref }}"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        draft: false
+        allowUpdates: false
+
+    - name: Upload binaries to Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: ./bin/unzip-partial*
+        file_glob: true
